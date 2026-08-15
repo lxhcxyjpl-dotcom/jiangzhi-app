@@ -25,7 +25,7 @@ npm start        # 启动：主窗口 + 桌面组件 + 托盘
 
 ## 图标
 
-- 源设计：`assets/icon.svg`（降智拨盘），备选方案 `assets/icon-steps.svg` / `assets/icon-wave.svg`；
+- 源设计：`assets/icon.svg`（降智拨盘·满弧表盘），备选方案 `assets/icon-v3.svg`（半亮+虚环）/ `assets/icon-steps.svg` / `assets/icon-wave.svg`；
 - 重画后重新渲染：`electron tools/render-icon.cjs assets/icon.svg assets/icon-512.png 512`；
 - 重新打包 ICO：`powershell -ExecutionPolicy Bypass -File tools/build-ico.ps1`。
 

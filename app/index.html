@@ -2550,15 +2550,15 @@ function makeTrayIcon(){
     g.clearRect(0,0,32,32);
     // 橙色底盘
     g.beginPath(); g.arc(16,16,14,0,Math.PI*2); g.fillStyle="#E2602F"; g.fill();
-    // 米白拨盘弧：从右上经底部扫到左下
-    g.beginPath(); g.arc(16,16,7.5,-Math.PI/4,Math.PI*3/4,false);
+    // 米白表盘：几乎整圈，左下角留缺口（从左侧经顶部、右侧到正下方）
+    g.beginPath(); g.arc(16,16,7.5,Math.PI,Math.PI/2,false);
     g.strokeStyle="#FFF8EC"; g.lineWidth=4; g.lineCap="round"; g.stroke();
-    // 指针指向左下（"调低"）
+    // 指针停在缺口里（左下，"调低"档位）
     var kx=Math.cos(Math.PI*3/4), ky=Math.sin(Math.PI*3/4);
-    g.beginPath(); g.moveTo(16+kx*1.5,16+ky*1.5); g.lineTo(16+kx*9.5,16+ky*9.5);
+    g.beginPath(); g.moveTo(16+kx*2,16+ky*2); g.lineTo(16+kx*7,16+ky*7);
     g.strokeStyle="#FFF8EC"; g.lineWidth=4; g.lineCap="round"; g.stroke();
     // 轴心
-    g.beginPath(); g.arc(16,16,1.6,0,Math.PI*2); g.fillStyle="#FFF8EC"; g.fill();
+    g.beginPath(); g.arc(16,16,1.4,0,Math.PI*2); g.fillStyle="#FFF8EC"; g.fill();
     return c.toDataURL("image/png");
   }catch(e){ return null; }
 }
