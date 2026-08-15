@@ -532,6 +532,7 @@ function uid(){ return Date.now().toString(36) + Math.random().toString(36).slic
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 function pad2(n){ return (n<10?"0":"")+n; }
 function fmtClock(ms){ var t=Math.max(0,Math.ceil(ms/1000)); return pad2(Math.floor(t/60))+":"+pad2(t%60); }
+function clampMins(v){ var n=parseInt(v,10); if(!n||n<1) return 25; return Math.min(480, n); }
 function fmtTime(ts){ var d=new Date(ts); return pad2(d.getHours())+":"+pad2(d.getMinutes()); }
 var WD=["日","一","二","三","四","五","六"];
 function dayKey(ts){ var d=new Date(ts); return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); }
@@ -1363,10 +1364,9 @@ function renderSettings(){
   html+='<button class="btn btn-soft" data-act="saveApiKey">保存</button></div>';
   html+='<div class="tiny" style="margin-top:8px">模型 deepseek-chat · 它只起草执行清单；提示语、鼓励语一律不生成，确认权在你。</div></div>';
   html+='<div class="set-group card"><div class="h-label">专注参数</div>';
-  html+='<div class="set-row"><div><div class="sl">默认检查时长</div><div class="sh">一个执行单元多长</div></div>';
-  html+='<select class="sel" style="width:auto" data-act="setDefaultMinutes">';
-  [15,25,30,45,60].forEach(function(m){ html+='<option value="'+m+'"'+(st.defaultMinutes===m?" selected":"")+'>'+m+' 分钟</option>'; });
-  html+='</select></div>';
+  html+='<div class="set-row"><div><div class="sl">默认检查时长</div><div class="sh">一个执行单元多长，可直接输入任意分钟数</div></div>';
+  html+='<input type="number" class="inp" style="width:110px" min="1" max="480" step="1" list="setMinsList" value="'+(st.defaultMinutes||25)+'" data-act="setDefaultMinutes">';
+  html+='<datalist id="setMinsList"><option value="15"></option><option value="25"></option><option value="30"></option><option value="45"></option><option value="60"></option><option value="90"></option></datalist></div>';
   html+='<div class="set-row"><div><div class="sl">到点提示音</div><div class="sh">检查点到了响两声</div></div>';
   html+='<label class="switch"><input type="checkbox"'+(st.sound?" checked":"")+' data-act="setToggle" data-key="sound"><i></i></label></div>';
   html+='<div class="set-row"><div><div class="sl">专注时显示提示语</div><div class="sh">预制叙事，可随时隐藏</div></div>';
@@ -1854,10 +1854,9 @@ function openPointModal(pointId, presetTaskId){
   body+='<div class="hint">写成手能直接伸向的动作——「复习数学」不是动作，「打开第42页」才是。</div></div>';
   body+='<div class="field"><label>做到哪里算这一段结束？</label>';
   body+='<input id="pmCriteria" class="inp" placeholder="例：做完45页并订正" value="'+esc(p?p.doneCriteria:"")+'"></div>';
-  body+='<div class="field"><label>最晚多久后检查？</label>';
-  body+='<select id="pmMins" class="sel">';
-  [15,25,30,45,60].forEach(function(m){ body+='<option value="'+m+'"'+((p?p.checkMinutes:S.settings.defaultMinutes)===m?" selected":"")+'>'+m+' 分钟</option>'; });
-  body+='</select></div>';
+  body+='<div class="field"><label>最晚多久后检查？（分钟，可自定义）</label>';
+  body+='<input id="pmMins" type="number" class="inp" style="width:130px" min="1" max="480" step="1" list="pmMinsList" value="'+((p?p.checkMinutes:S.settings.defaultMinutes)||25)+'">';
+  body+='<datalist id="pmMinsList"><option value="15"></option><option value="25"></option><option value="30"></option><option value="45"></option><option value="60"></option><option value="90"></option></datalist></div>';
   body+='<div class="field"><label>这次用的提示语（可选）</label>';
   body+='<select id="pmCue" class="sel"><option value="">（沿用该任务上次那句）</option>'+cueOpts+'</select>';
   body+='<input id="pmCueText" class="inp" style="margin-top:8px" placeholder="或临时写一句……" value="'+esc(p&&p.cueText?p.cueText:"")+'"></div>';
@@ -1873,6 +1872,7 @@ function savePointModal(pointId){
   var taskSel=$("#pmTask"), title=$("#pmTitle"), crit=$("#pmCriteria"), mins=$("#pmMins"), cueSel=$("#pmCue"), cueText=$("#pmCueText");
   if(!title || !title.value.trim()){ toast("至少写下现在做什么"); return; }
   var taskId=taskSel?taskSel.value:"", t;
+  var minsVal=(mins && mins.value.trim()!=="")?clampMins(mins.value):null;
   if(taskId==="__new" || !taskId){
     var nt=$("#pmNewTask");
     var tname=(nt&&nt.value.trim())?nt.value.trim():"未命名任务";
@@ -1884,11 +1884,11 @@ function savePointModal(pointId){
   if(cText){ var nc={ id:uid(), text:cText, favorite:false, lastUsedAt:0 }; S.cues.push(nc); cueId=nc.id; }
   if(pointId){
     var p=pointById(pointId); if(!p){ closeModal(); return; }
-    p.taskId=taskId; p.title=title.value.trim(); p.doneCriteria=crit?crit.value.trim():""; p.checkMinutes=mins?parseInt(mins.value,10)||null:null;
+    p.taskId=taskId; p.title=title.value.trim(); p.doneCriteria=crit?crit.value.trim():""; p.checkMinutes=minsVal;
     if(cueId) p.cueId=cueId;
   } else {
     S.points.push({ id:uid(), taskId:taskId, title:title.value.trim(), doneCriteria:crit?crit.value.trim():"", done:false,
-      checkMinutes:mins?parseInt(mins.value,10)||null:null, createdAt:Date.now(), cueId:cueId||null });
+      checkMinutes:minsVal, createdAt:Date.now(), cueId:cueId||null });
   }
   var t2=taskById(taskId); if(t2 && cueId) t2.cueId=cueId;
   closeModal(); persist(); renderAll();
@@ -1944,7 +1944,7 @@ function saveApiKey(){
   S.settings.apiKey=el.value.trim();
   persist(); renderAll(); toast(S.settings.apiKey?"Key 已保存（只在本机）":"已清空 Key");
 }
-function setDefaultMinutes(v){ S.settings.defaultMinutes=parseInt(v,10)||25; persist(); }
+function setDefaultMinutes(v){ S.settings.defaultMinutes=clampMins(v); persist(); }
 function setToggle(key, val){ S.settings[key]=!!val; persist(); }
 function setWidgetOpacity(v){ S.settings.widgetOpacity=parseFloat(v); persist(); }
 function toggleCueFav(id){ var c=cueById(id); if(!c) return; c.favorite=!c.favorite; persist(); renderAll(); }
@@ -2055,7 +2055,7 @@ function loadDemo(){
 }
 
 /* ============ AI：想法 → 执行清单 ============ */
-var AI_SYSTEM='你是「主动降智」方法里的规划助手。用户给你一句想法或一段材料，你把它转成一份马上能做的执行清单。硬性规则：1. 只输出一个 JSON 对象，结构：{"tasks":[{"title":"阶段任务名","setup_hint":"一句环境预设建议（可为空字符串）","points":[{"action":"可直接动手的具体动作","done_criteria":"做到哪里算这一段结束","check_minutes":25}]}],"changes":[{"type":"add_points","task_title":"已有任务名","points":[{"action":"...","done_criteria":"...","check_minutes":25}]},{"type":"delete_point","task_title":"已有任务名","point_title":"已有执行点标题"}],"questions":[{"ask":"需要补充的问题","options":["选项A","选项B"]}]}。changes 可为空数组。2. 执行点必须跨过「可直接行动」阈值：写成手能直接伸向的动作（打开什么文件、读哪一段、写出哪一句），而不是「复习数学」这种目标。3. 禁止输出标签、优先级、截止时间、任务意义、鼓励语、鸡汤。4. 不编造用户没提供的事实（页数、章节、人名、数据）。缺信息就写成 questions，最多 3 个，每个带 2-4 个短选项；信息够则 questions 为空数组。5. 每个任务最多 5 个执行点，现在就能开始、最重要的排最前。6. check_minutes 只取 15、25、30 中最合适的。7. 全部用中文。8. 如果用户附上了现有清单：默认不重复生成其中已存在的执行点；当新动作明显属于某个已有任务时，用 changes 里的 add_points 挂到该任务下，task_title 必须与已有任务名完全一致；只有当某个已有执行点与新计划明显重复或已过时时，才用 changes 里的 delete_point 建议删除（最多 2 条，必须谨慎）；其余新内容一律放进 tasks。9. delete_point 只是建议，用户会逐条审核，未经批准不生效。';
+var AI_SYSTEM='你是「主动降智」方法里的规划助手。用户给你一句想法或一段材料，你把它转成一份马上能做的执行清单。硬性规则：1. 只输出一个 JSON 对象，结构：{"tasks":[{"title":"阶段任务名","setup_hint":"一句环境预设建议（可为空字符串）","points":[{"action":"可直接动手的具体动作","done_criteria":"做到哪里算这一段结束","check_minutes":25}]}],"changes":[{"type":"add_points","task_title":"已有任务名","points":[{"action":"...","done_criteria":"...","check_minutes":25}]},{"type":"delete_point","task_title":"已有任务名","point_title":"已有执行点标题"}],"questions":[{"ask":"需要补充的问题","options":["选项A","选项B"]}]}。changes 可为空数组。2. 执行点必须跨过「可直接行动」阈值：写成手能直接伸向的动作（打开什么文件、读哪一段、写出哪一句），而不是「复习数学」这种目标。3. 禁止输出标签、优先级、截止时间、任务意义、鼓励语、鸡汤。4. 不编造用户没提供的事实（页数、章节、人名、数据）。缺信息就写成 questions，最多 3 个，每个带 2-4 个短选项；信息够则 questions 为空数组。5. 每个任务最多 5 个执行点，现在就能开始、最重要的排最前。6. check_minutes 用整数分钟：默认 25；短任务给 15，较长任务给 45、60、90，不要用 1、2 分钟这类碎片时长。7. 全部用中文。8. 如果用户附上了现有清单：默认不重复生成其中已存在的执行点；当新动作明显属于某个已有任务时，用 changes 里的 add_points 挂到该任务下，task_title 必须与已有任务名完全一致；只有当某个已有执行点与新计划明显重复或已过时时，才用 changes 里的 delete_point 建议删除（最多 2 条，必须谨慎）；其余新内容一律放进 tasks。9. delete_point 只是建议，用户会逐条审核，未经批准不生效。';
 var TEMPLATES={
   zubao:{ name:"组会汇报", fields:[
     {key:"topic",type:"text",label:"汇报主题",ph:"例：大创课题进展"},
@@ -2250,7 +2250,7 @@ function parseAIDraft(text){
     var tasks=obj.tasks.map(function(tk){
       var pts=(tk.points||[]).map(function(p){
         var mins=parseInt(p.check_minutes,10);
-        return { action:String(p.action||"").trim(), criteria:String(p.done_criteria||"").trim(), mins:[15,25,30,45].indexOf(mins)>=0?mins:25 };
+        return { action:String(p.action||"").trim(), criteria:String(p.done_criteria||"").trim(), mins:clampMins(mins) };
       }).filter(function(p){ return p.action; });
       return { title:String(tk.title||"未命名任务").trim(), hint:String(tk.setup_hint||"").trim(), points:pts };
     }).filter(function(tk){ return tk.points.length || tk.title; });
@@ -2260,7 +2260,7 @@ function parseAIDraft(text){
       if(c.type==="add_points"){
         var pts=(c.points||[]).map(function(p){
           var mins=parseInt(p.check_minutes,10);
-          return { action:String(p.action||"").trim(), criteria:String(p.done_criteria||"").trim(), mins:[15,25,30,45].indexOf(mins)>=0?mins:25 };
+          return { action:String(p.action||"").trim(), criteria:String(p.done_criteria||"").trim(), mins:clampMins(mins) };
         }).filter(function(p){ return p.action; });
         return { type:"add_points", taskTitle:String(c.task_title||"").trim(), points:pts };
       }
@@ -2316,6 +2316,7 @@ function aiRenderDraft(){
     });
     h+='<div class="tiny" style="margin-top:6px">回答后点「重新生成」，清单会更贴你。</div></div>';
   }
+  h+='<datalist id="aiMinsList"><option value="15"></option><option value="25"></option><option value="30"></option><option value="45"></option><option value="60"></option><option value="90"></option></datalist>';
   box.innerHTML=h;
   aiSyncButtons();
 }
@@ -2323,7 +2324,7 @@ function aiPointRowHtml(ti,pi,p){
   return '<div class="ai-point" data-pi="'+pi+'">'
     +'<input class="inp grow ai-action" value="'+esc(p.action)+'">'
     +'<input class="inp ai-crit" style="width:38%" placeholder="做到哪算结束" value="'+esc(p.criteria)+'">'
-    +'<select class="sel ai-mins">'+[15,25,30,45].map(function(m){ return '<option value="'+m+'"'+(p.mins===m?" selected":"")+'>'+m+'分</option>'; }).join("")+'</select>'
+    +'<input type="number" class="inp ai-mins" style="width:74px;flex:none" min="1" max="480" step="1" list="aiMinsList" value="'+(p.mins||25)+'">'
     +'<button class="mv" title="上移" data-act="aiMove" data-ti="'+ti+'" data-pi="'+pi+'" data-d="-1">↑</button>'
     +'<button class="mv" title="下移" data-act="aiMove" data-ti="'+ti+'" data-pi="'+pi+'" data-d="1">↓</button>'
     +'<button class="mv" title="删除" data-act="aiDelPoint" data-ti="'+ti+'" data-pi="'+pi+'">✕</button></div>';
@@ -2356,7 +2357,7 @@ function aiReadDraft(){
     var points=[];
     $$(".ai-point",t).forEach(function(p){
       var a=$(".ai-action",p).value.trim(); if(!a) return;
-      points.push({ action:a, criteria:$(".ai-crit",p).value.trim(), mins:parseInt($(".ai-mins",p).value,10)||25 });
+      points.push({ action:a, criteria:$(".ai-crit",p).value.trim(), mins:clampMins($(".ai-mins",p).value) });
     });
     if(title||points.length) tasks.push({ title:title||"未命名任务", hint:hint, points:points });
   });
