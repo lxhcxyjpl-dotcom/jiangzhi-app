@@ -1,0 +1,20 @@
+const { contextBridge, ipcRenderer } = require('electron');
+contextBridge.exposeInMainWorld('desktopAPI', {
+  isDesktop: true,
+  loadStore: () => ipcRenderer.invoke('store:load'),
+  saveStore: (data) => ipcRenderer.invoke('store:save', data),
+  aiGenerate: (payload) => ipcRenderer.invoke('ai:generate', payload),
+  toggleWidget: (show) => ipcRenderer.invoke('widget:toggle', show),
+  widgetSetSize: (w, h) => ipcRenderer.invoke('widget:set-size', w, h),
+  widgetVisible: () => ipcRenderer.invoke('widget:get-visible'),
+  openMain: () => ipcRenderer.invoke('main:open'),
+  hideMain: () => ipcRenderer.invoke('main:hide'),
+  exportData: () => ipcRenderer.invoke('export:data'),
+  importData: () => ipcRenderer.invoke('import:data'),
+  backupList: () => ipcRenderer.invoke('backup:list'),
+  backupRestore: (name) => ipcRenderer.invoke('backup:restore', name),
+  sendTrayIcon: (b64) => ipcRenderer.invoke('tray:icon', b64),
+  smokeReady: () => ipcRenderer.send('smoke:ready'),
+  smokeError: (msg) => ipcRenderer.send('smoke:error', msg),
+  onStateChanged: (cb) => ipcRenderer.on('state-changed', (e, store) => cb(store)),
+});

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+out/
+*.log
+.DS_Store
+
+# 本地运行数据与备份（数据在 %APPDATA%/主动降智/，以防出现在项目内）
+jiangzhi-data.json
+jiangzhi-backups/

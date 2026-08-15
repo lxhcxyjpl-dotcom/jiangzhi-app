@@ -1,0 +1,14 @@
+{
+  "name": "jiangzhi-app",
+  "productName": "主动降智",
+  "version": "0.1.0",
+  "description": "主动降智 · 专注与执行清单（桌面组件 + 单页 WebApp）",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.2.0"
+  }
+}
