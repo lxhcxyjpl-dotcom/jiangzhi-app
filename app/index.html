@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>主动降智 · 把脑子用在该用的时候</title>
+<link rel="icon" href="../icon.ico">
 <style>
 /* ============ 设计令牌 ============ */
 :root{
@@ -2547,8 +2548,17 @@ function makeTrayIcon(){
     var c=document.createElement("canvas"); c.width=32; c.height=32;
     var g=c.getContext("2d");
     g.clearRect(0,0,32,32);
-    g.beginPath(); g.arc(16,16,13,0,Math.PI*2); g.fillStyle="#E2602F"; g.fill();
-    g.beginPath(); g.arc(16,16,5,0,Math.PI*2); g.fillStyle="#FFF8EC"; g.fill();
+    // 橙色底盘
+    g.beginPath(); g.arc(16,16,14,0,Math.PI*2); g.fillStyle="#E2602F"; g.fill();
+    // 米白拨盘弧：从右上经底部扫到左下
+    g.beginPath(); g.arc(16,16,7.5,-Math.PI/4,Math.PI*3/4,false);
+    g.strokeStyle="#FFF8EC"; g.lineWidth=4; g.lineCap="round"; g.stroke();
+    // 指针指向左下（"调低"）
+    var kx=Math.cos(Math.PI*3/4), ky=Math.sin(Math.PI*3/4);
+    g.beginPath(); g.moveTo(16+kx*1.5,16+ky*1.5); g.lineTo(16+kx*9.5,16+ky*9.5);
+    g.strokeStyle="#FFF8EC"; g.lineWidth=4; g.lineCap="round"; g.stroke();
+    // 轴心
+    g.beginPath(); g.arc(16,16,1.6,0,Math.PI*2); g.fillStyle="#FFF8EC"; g.fill();
     return c.toDataURL("image/png");
   }catch(e){ return null; }
 }

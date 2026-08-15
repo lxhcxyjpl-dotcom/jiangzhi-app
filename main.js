@@ -135,6 +135,7 @@ function createMain() {
     width: 1020, height: 760, minWidth: 880, minHeight: 600,
     title: WIN_TITLE,
     backgroundColor: '#F7F1E6',
+    icon: path.join(__dirname, 'icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -154,6 +155,7 @@ function createWidget() {
     frame: false, transparent: true, resizable: false, movable: true,
     alwaysOnTop: true, skipTaskbar: true, hasShadow: false,
     backgroundColor: '#00000000',
+    icon: path.join(__dirname, 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true, nodeIntegration: false, spellcheck: false

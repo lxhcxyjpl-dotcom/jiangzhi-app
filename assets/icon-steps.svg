@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>主动降智 · 降阶梯（备选 A）</title>
+  <desc>三根米白圆角柱从左到右逐级降低，右下一点落定——层层降下来、稳稳落地</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FA8D57"/>
+      <stop offset="0.52" stop-color="#E75F2D"/>
+      <stop offset="1" stop-color="#CE4B1C"/>
+    </linearGradient>
+    <radialGradient id="hl" cx="0.30" cy="0.24" r="0.85">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="10" y="10" width="236" height="236" rx="58" fill="url(#bg)"/>
+  <rect x="10" y="10" width="236" height="236" rx="58" fill="url(#hl)"/>
+  <g fill="#FFF7EA">
+    <rect x="58" y="84" width="24" height="88" rx="12"/>
+    <rect x="100" y="112" width="24" height="60" rx="12"/>
+    <rect x="142" y="134" width="24" height="38" rx="12"/>
+    <circle cx="193" cy="163" r="9"/>
+  </g>
+</svg>

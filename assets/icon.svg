@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>主动降智 · 降智拨盘</title>
+  <desc>暖橙渐变圆角方形底，米白拨盘：圆弧经底部扫至左下，指针停在左下方——主动把思维旋钮调低</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FA8D57"/>
+      <stop offset="0.52" stop-color="#E75F2D"/>
+      <stop offset="1" stop-color="#CE4B1C"/>
+    </linearGradient>
+    <radialGradient id="hl" cx="0.30" cy="0.24" r="0.85">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="10" y="10" width="236" height="236" rx="58" fill="url(#bg)"/>
+  <rect x="10" y="10" width="236" height="236" rx="58" fill="url(#hl)"/>
+  <g fill="none" stroke="#FFF7EA" stroke-linecap="round">
+    <path d="M 86.99 171.01 A 58 58 0 0 0 169.01 88.99" stroke-width="24"/>
+    <path d="M 113.86 144.14 L 78.5 179.5" stroke-width="24"/>
+  </g>
+  <circle cx="128" cy="130" r="10" fill="#FFF7EA"/>
+</svg>
