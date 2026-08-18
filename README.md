@@ -29,6 +29,13 @@ npm start        # 启动：主窗口 + 桌面组件 + 托盘
 - 重画后重新渲染：`electron tools/render-icon.cjs assets/icon.svg assets/icon-512.png 512`；
 - 重新打包 ICO：`powershell -ExecutionPolicy Bypass -File tools/build-ico.ps1`。
 
+## 桌面课表
+
+- 临床1班周课表组件：`app/timetable.html`（单文件自包含，双击可在浏览器直接运行）；
+- 数据源：`assets/timetable-data.json`（由课表 xlsx 解析而来）；
+- 重新生成数据：`python tools/parse-timetable.py <xlsx路径>`；重新打包单文件：`python tools/build-timetable.py`；
+- 桌面版随应用启动自动钉在左上角，可折叠、可拖角缩放；托盘菜单 / 主窗顶栏「▦ 课表」/ 设置页可显隐。
+
 ## 数据
 
 - 桌面版：`%APPDATA%/主动降智/jiangzhi-data.json`（设置页可一键导出/导入）
@@ -38,6 +45,6 @@ npm start        # 启动：主窗口 + 桌面组件 + 托盘
 ## 开发说明
 
 - 前端零框架，纯 HTML/CSS/JS，单文件 `app/index.html`；
-- `main.js` 负责双窗口（主窗 + 组件窗）、托盘、IPC、JSON 文件存储、DeepSeek 代理；
+- `main.js` 负责三窗口（主窗 + 组件窗 + 课表窗）、托盘、IPC、JSON 文件存储、DeepSeek 代理；
 - 组件窗与主窗共享同一份数据与专注会话状态，通过 IPC 广播同步；
 - `$env:SMOKE='1'; npx electron .` 可无界面冒烟测试（启动成功后自动退出并打印 SMOKE_OK）。

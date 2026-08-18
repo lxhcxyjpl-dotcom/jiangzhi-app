@@ -10,6 +10,7 @@ const WIN_TITLE = '主动降智';
 
 let mainWin = null;
 let widgetWin = null;
+let ttWin = null;
 let tray = null;
 let quitting = false;
 let trayIconReady = false;
@@ -174,6 +175,37 @@ function createWidget() {
   widgetWin.on('closed', () => { widgetWin = null; });
 }
 
+function createTimetable() {
+  ttWin = new BrowserWindow({
+    width: 820, height: 800, minWidth: 420, minHeight: 150,
+    frame: false, transparent: true, resizable: true, movable: true,
+    alwaysOnTop: true, skipTaskbar: true, hasShadow: false,
+    backgroundColor: '#00000000',
+    icon: path.join(__dirname, 'icon.ico'),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true, nodeIntegration: false, spellcheck: false
+    }
+  });
+  ttWin.setAlwaysOnTop(true, 'floating');
+  try {
+    const wa = screen.getPrimaryDisplay().workArea;
+    ttWin.setPosition(wa.x + 40, wa.y + 40);
+  } catch (e) {}
+  ttWin.loadFile(path.join(__dirname, 'app', 'timetable.html'));
+  ttWin.on('closed', () => { ttWin = null; });
+}
+
+function toggleTimetable(show) {
+  const visible = ttWin && !ttWin.isDestroyed() && ttWin.isVisible();
+  const want = (typeof show === 'boolean') ? show : !visible;
+  if (want) {
+    if (!ttWin || ttWin.isDestroyed()) createTimetable();
+    else ttWin.showInactive();
+  } else if (ttWin) ttWin.hide();
+  return want;
+}
+
 function showMain() {
   if (!mainWin) createMain(); else { mainWin.show(); mainWin.focus(); }
   return true;
@@ -207,6 +239,7 @@ function createTray(iconBase64) {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: '打开主窗口', click: () => showMain() },
     { label: '显示 / 隐藏桌面组件', click: () => toggleWidget() },
+    { label: '显示 / 隐藏课表', click: () => toggleTimetable() },
     { type: 'separator' },
     { label: '退出', click: () => { quitting = true; app.quit(); } }
   ]));
@@ -224,6 +257,11 @@ ipcMain.handle('widget:set-size', (e, w, h) => {
   return true;
 });
 ipcMain.handle('widget:get-visible', () => !!(widgetWin && !widgetWin.isDestroyed() && widgetWin.isVisible()));
+ipcMain.handle('timetable:toggle', (e, show) => toggleTimetable(show));
+ipcMain.handle('timetable:set-size', (e, w, h) => {
+  if (ttWin && !ttWin.isDestroyed()) ttWin.setContentSize(Math.round(w), Math.round(h));
+  return true;
+});
 ipcMain.handle('main:open', () => { showMain(); return true; });
 ipcMain.handle('main:hide', () => { if (mainWin) mainWin.hide(); return true; });
 ipcMain.handle('tray:icon', (e, b64) => { createTray(b64); return true; });
@@ -300,6 +338,7 @@ if (!gotLock) {
     loadStore();
     createMain();
     createWidget();
+    createTimetable();
     setInterval(checkRemind, 30000);
     if (SMOKE) setTimeout(() => { console.error('SMOKE_TIMEOUT'); quitting = true; app.quit(); }, 20000);
   });

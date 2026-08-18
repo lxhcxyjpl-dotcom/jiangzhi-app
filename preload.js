@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   toggleWidget: (show) => ipcRenderer.invoke('widget:toggle', show),
   widgetSetSize: (w, h) => ipcRenderer.invoke('widget:set-size', w, h),
   widgetVisible: () => ipcRenderer.invoke('widget:get-visible'),
+  ttToggle: (show) => ipcRenderer.invoke('timetable:toggle', show),
+  ttSetSize: (w, h) => ipcRenderer.invoke('timetable:set-size', w, h),
   openMain: () => ipcRenderer.invoke('main:open'),
   hideMain: () => ipcRenderer.invoke('main:hide'),
   exportData: () => ipcRenderer.invoke('export:data'),
