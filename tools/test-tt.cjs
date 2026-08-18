@@ -24,6 +24,8 @@ app.whenReady().then(async () => {
         cells: document.querySelectorAll('.cell').length,
         week: document.getElementById('weekLabel').textContent,
         hasTtApi: !!(window.desktopAPI && window.desktopAPI.ttSetSize),
+        hasTtMin: !!(window.desktopAPI && window.desktopAPI.ttMinimize),
+        minBtnVisible: getComputedStyle(document.getElementById('minBtn')).display !== 'none',
         gripVisible: getComputedStyle(document.getElementById('grip')).display !== 'none',
         wrapVisible: win_visible_helper()
       };

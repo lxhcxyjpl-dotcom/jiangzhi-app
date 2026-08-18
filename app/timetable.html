@@ -110,6 +110,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:tr
       <button class="today-chip" data-act="thisWeek">本周</button>
     </div>
     <button data-act="theme" title="深浅色">◐</button>
+    <button data-act="min" id="minBtn" title="最小化到任务栏">—</button>
     <button data-act="collapse" id="collapseBtn" title="折叠/展开">▾</button>
   </div>
   <div class="body" id="body"></div>
@@ -266,14 +267,17 @@ document.addEventListener("click", function(e){
   else if(act==="next"){ WEEK = clampWeek(WEEK+1); save(); render(); }
   else if(act==="thisWeek"){ var ti=todayInfo(); WEEK = clampWeek(ti.inTerm?ti.week:1); save(); render(); }
   else if(act==="collapse"){ COLLAPSED = !COLLAPSED; save(); render(); }
+  else if(act==="min"){ if(window.desktopAPI && window.desktopAPI.ttMinimize) window.desktopAPI.ttMinimize(); }
   else if(act==="theme"){ THEME = THEME==="light" ? "dark" : (THEME==="dark" ? "auto" : "light"); applyTheme(); save(); }
 });
 
-/* 桌面版缩放手柄 */
+/* 桌面版缩放手柄 + 最小化按钮 */
 (function(){
   var grip = document.getElementById("grip");
   var hasApi = !!(window.desktopAPI && window.desktopAPI.ttSetSize);
-  if(!hasApi){ grip.style.display = "none"; return; }
+  if(!hasApi){ grip.style.display = "none"; }
+  var minBtn = document.getElementById("minBtn");
+  if(!(window.desktopAPI && window.desktopAPI.ttMinimize)){ minBtn.style.display = "none"; }
   var dragging = false, base = null;
   grip.addEventListener("mousedown", function(e){
     dragging = true; base = {x:e.screenX, y:e.screenY};

@@ -260,6 +260,10 @@ ipcMain.handle('timetable:set-size', (e, w, h) => {
   if (ttWin && !ttWin.isDestroyed()) ttWin.setContentSize(Math.round(w), Math.round(h));
   return true;
 });
+ipcMain.handle('timetable:minimize', () => {
+  if (ttWin && !ttWin.isDestroyed()) ttWin.minimize();
+  return true;
+});
 ipcMain.handle('main:open', () => { showMain(); return true; });
 ipcMain.handle('main:hide', () => { if (mainWin) mainWin.hide(); return true; });
 ipcMain.handle('tray:icon', (e, b64) => { createTray(b64); return true; });
