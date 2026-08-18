@@ -179,18 +179,18 @@ function render(){
   var body = document.getElementById("body");
   var h = '<div class="note">📌 '+esc(META.note)+'</div>';
   h += '<div class="grid">';
-  h += '<div class="pcol"></div>';
+  h += '<div class="pcol" style="grid-column:1;grid-row:1"></div>';
   var dayCells = {};
   for(var d=1;d<=5;d++){
     var isToday = ti.inTerm && ti.day===d && ti.week===WEEK;
     var dd = DATA.dates[WEEK+"-"+d] || "";
     var ddTxt = dd ? (dd.slice(5).replace("-","/")) : "";
-    h += '<div class="dhead'+(isToday?" today":"")+'">周'+DAYS[d-1]+(ddTxt?'<span class="dd">'+ddTxt+'</span>':'')+'</div>';
+    h += '<div class="dhead'+(isToday?" today":"")+'" style="grid-column:'+(d+1)+';grid-row:1">周'+DAYS[d-1]+(ddTxt?'<span class="dd">'+ddTxt+'</span>':'')+'</div>';
     dayCells[d] = [];
   }
-  // 节次列 + 槽位
+  // 节次列（显式定位：全部在第 1 列，行号=节次+1）
   for(var p=1;p<=12;p++){
-    h += '<div class="pcol"><b>'+p+'</b>'+esc(PERIODS[p-1].time)+'</div>';
+    h += '<div class="pcol" style="grid-column:1;grid-row:'+(p+1)+'"><b>'+p+'</b>'+esc(PERIODS[p-1].time)+'</div>';
   }
   // 槽位（同一 (day,start,end) 内多个周变体横排）
   var slots = {};

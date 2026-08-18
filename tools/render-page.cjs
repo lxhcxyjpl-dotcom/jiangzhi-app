@@ -9,18 +9,19 @@ app.whenReady().then(async () => {
   try {
     const win = new BrowserWindow({ show: false, width: w, height: h, useContentSize: true,
       webPreferences: { offscreen: true } });
+    await win.webContents.session.clearStorageData();
     await win.loadFile(target);
     await new Promise(r => setTimeout(r, 500));
     const img = await win.webContents.capturePage({ x: 0, y: 0, width: w, height: h });
     fs.writeFileSync(outPath, img.toPNG());
     const stats = await win.webContents.executeJavaScript(`(function(){
+      var pcols = Array.prototype.slice.call(document.querySelectorAll('.pcol')).map(function(el){
+        return el.style.gridColumn + "/" + el.style.gridRow;
+      });
       var r = { cells: document.querySelectorAll('.cell').length,
         week: document.getElementById('weekLabel').textContent,
-        mini: document.getElementById('mini').textContent,
+        pcols: pcols.slice(0, 14),
         collapsed: document.getElementById('wrap').classList.contains('collapsed') };
-      document.querySelector('[data-act=collapse]').click();
-      r.collapsedAfterClick = document.getElementById('wrap').classList.contains('collapsed');
-      r.miniAfter = document.getElementById('mini').textContent;
       return r;
     })()`);
     console.log('STATS ' + JSON.stringify(stats));
