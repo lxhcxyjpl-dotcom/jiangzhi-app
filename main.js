@@ -178,8 +178,8 @@ function createWidget() {
 function createTimetable() {
   ttWin = new BrowserWindow({
     width: 820, height: 800, minWidth: 420, minHeight: 150,
-    frame: false, transparent: true, resizable: true, movable: true,
-    backgroundColor: '#00000000',
+    frame: false, resizable: true, movable: true,
+    backgroundColor: '#F6F0E3',
     icon: path.join(__dirname, 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

@@ -8,9 +8,8 @@ app.whenReady().then(async () => {
   try {
     const win = new BrowserWindow({
       width: 820, height: 800, minWidth: 420, minHeight: 150,
-      frame: false, transparent: true, resizable: true, movable: true,
-      alwaysOnTop: true, skipTaskbar: true, hasShadow: false,
-      backgroundColor: '#00000000',
+      frame: false, resizable: true, movable: true,
+      backgroundColor: '#F6F0E3',
       webPreferences: {
         preload: path.join(__dirname, '..', 'preload.js'),
         contextIsolation: true, nodeIntegration: false, spellcheck: false
