@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>临床1班 · 课表</title>
+<title>示例学习 · 课表</title>
 <style>
 :root{
   --paper:#F6F0E3; --card:#FFFCF5; --card2:#FBF7EC; --line:#E3D5BC; --line2:#EFE5D2;
@@ -101,7 +101,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:tr
 <div class="wrap" id="wrap">
   <div class="head">
     <span class="dot"></span>
-    <span class="tt">临床1班 · 课表<small id="headTerm"></small></span>
+    <span class="tt">示例学习 · 课表<small id="headTerm"></small></span>
     <span class="grow"></span>
     <div class="nav">
       <button class="navbtn" data-act="prev" title="上一周">◀</button>
@@ -118,6 +118,7 @@ body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:tr
   <div class="grip" id="grip" title="拖拽调整大小"></div>
 </div>
 <script>
+window.addEventListener("error", function(event){ if(window.desktopAPI && window.desktopAPI.smokeError) window.desktopAPI.smokeError("timetable: "+event.message); });
 /*__TIMETABLE_DATA__*/
 var DATA = TIMETABLE_DATA;
 var META = DATA.meta, PERIODS = DATA.periods, COURSES = DATA.courses;
@@ -190,7 +191,7 @@ function render(){
     dayCells[d] = [];
   }
   // 节次列（显式定位：全部在第 1 列，行号=节次+1）
-  for(var p=1;p<=12;p++){
+  for(var p=1;p<=PERIODS.length;p++){
     h += '<div class="pcol" style="grid-column:1;grid-row:'+(p+1)+'"><b>'+p+'</b>'+esc(PERIODS[p-1].time)+'</div>';
   }
   // 槽位（同一 (day,start,end) 内多个周变体横排）
@@ -296,6 +297,7 @@ document.addEventListener("click", function(e){
 try{ if(window.matchMedia){ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function(){ if(THEME==="auto") applyTheme(); }); } }catch(e){}
 applyTheme();
 render();
+if(window.desktopAPI && window.desktopAPI.smokeReady) window.desktopAPI.smokeReady();
 </script>
 </body>
 </html>

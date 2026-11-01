@@ -8,3 +8,9 @@ out/
 jiangzhi-data.json
 jiangzhi-backups/
 assets/_tmp/
+
+.npm-cache/
+.integration-*/
+.vault-test-*/
+
+smoke.*.log

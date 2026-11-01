@@ -1,10 +1,19 @@
 // 主动降智 · Electron 主进程
 // 职责：双窗口（主窗 + 桌面组件窗）、托盘、IPC、JSON 文件存储、DeepSeek API 代理
-const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, dialog, Notification, screen } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, dialog, Notification, screen, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { CredentialVault } = require('./credential-vault');
+let vault;
+const { validateImport, portableData, importedData } = require('./data-policy');
 
 const SMOKE = !!process.env.SMOKE;
+// Smoke must never migrate the user's real settings.
+if (SMOKE) {
+  const smokeDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'jiangzhi-smoke-'));
+  app.setPath('userData', smokeDir);
+  app.on('will-quit', () => { try { fs.rmSync(smokeDir, { recursive: true, force: true }); } catch {} });
+}
 const WIDGET_W = 356;          // 组件窗基础宽度（含阴影留白）
 const WIN_TITLE = '主动降智';
 
@@ -42,7 +51,7 @@ function newestBackupRaw() {
     if (!fs.existsSync(dir)) return null;
     const files = fs.readdirSync(dir).filter(f => f.endsWith('.json')).sort().reverse();
     for (const f of files) {
-      try { const raw = fs.readFileSync(path.join(dir, f), 'utf8'); JSON.parse(raw); return raw; } catch (e) {}
+      try { const raw = fs.readFileSync(path.join(dir, f), 'utf8'); validateImport(JSON.parse(raw)); return raw; } catch (e) {}
     }
   } catch (e) {}
   return null;
@@ -53,7 +62,7 @@ function loadStore() {
     const raw = fs.readFileSync(storePath(), 'utf8');
     storeCache = normalizeStore(JSON.parse(raw));
   } catch (e) {
-    console.error('[store] 主数据文件无法解析:', e.message);
+    if (e.code !== 'ENOENT') console.error('[store] 主数据文件无法解析:', e.message);
     const rec = newestBackupRaw();
     if (rec) {
       try {
@@ -65,18 +74,39 @@ function loadStore() {
       if (e.code !== 'ENOENT') console.error('[store] 无可用备份，使用默认');
     }
   }
+  if (!vault) {
+    vault = new CredentialVault(path.join(app.getPath('userData'), 'credentials.bin'), safeStorage);
+    const legacy = storeCache.settings.apiKey;
+    vault.load(legacy);
+    delete storeCache.settings.apiKey;
+    if (legacy && !vault.migrationPending) {
+      try {
+      const tmp = storePath() + '.migration.tmp';
+      fs.writeFileSync(tmp, JSON.stringify(storeCache, null, 2), 'utf8');
+      fs.renameSync(tmp, storePath());
+      } catch (err) {
+        vault.migrationPending = true; vault.legacySource = legacy;
+        vault.status = '凭据已加密，但旧配置清理失败；旧配置保留，可继续使用任务';
+      }
+    }
+  }
   return storeCache;
 }
+function rendererState() { const state = portableData(loadStore()); state.settings.apiKeyConfigured = !!vault.key; state.settings.credentialStatus = vault.status; return state; }
 function saveStore(data) {
-  storeCache = normalizeStore(data);
+  const previous = storeCache;
+  const next = normalizeStore(portableData(data));
   try {
     maybeBackup();
     const tmp = storePath() + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(storeCache, null, 2), 'utf8');
+    const disk = portableData(next);
+    if (vault && vault.migrationPending) disk.settings.apiKey = vault.legacySource;
+    fs.writeFileSync(tmp, JSON.stringify(disk, null, 2), 'utf8');
     fs.renameSync(tmp, storePath());
+    storeCache = next;
   }
-  catch (e) { console.error('[store] 写入失败:', e.message); }
-  broadcast('state-changed', storeCache);
+  catch (e) { storeCache = previous; console.error('[store] 写入失败:', e.message); throw e; }
+  broadcast('state-changed', rendererState());
   applyWidgetOpacity();
 }
 
@@ -90,11 +120,11 @@ function maybeBackup() {
     const src = storePath();
     if (!fs.existsSync(src)) return;
     const raw = fs.readFileSync(src, 'utf8');
-    JSON.parse(raw);
+    const backup = portableData(validateImport(JSON.parse(raw)));
     lastBackupAt = now;
     fs.mkdirSync(backupDir(), { recursive: true });
     const name = 'backup-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json';
-    fs.writeFileSync(path.join(backupDir(), name), raw, 'utf8');
+    fs.writeFileSync(path.join(backupDir(), name), JSON.stringify(backup, null, 2), 'utf8');
     const files = fs.readdirSync(backupDir()).filter(f => f.endsWith('.json')).sort().reverse();
     for (const f of files.slice(10)) fs.unlinkSync(path.join(backupDir(), f));
   } catch (e) { console.error('[backup]', e.message); }
@@ -114,7 +144,7 @@ function checkRemind() {
     const today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     if (hm === r.time && r.lastFired !== today) {
       r.lastFired = today;
-      try { fs.writeFileSync(storePath(), JSON.stringify(storeCache, null, 2), 'utf8'); } catch (e) {}
+      try { saveStore(storeCache); } catch (e) {}
       if (Notification.isSupported()) {
         new Notification({ title: '该复盘了', body: '今天有什么证据说明我向前走了一点？还有哪个阻力没有解决？' }).show();
       }
@@ -222,7 +252,14 @@ function smokeOk() {
   console.log('SMOKE_OK');
   setTimeout(() => { quitting = true; app.quit(); }, 800);
 }
-ipcMain.on('smoke:ready', () => { if (SMOKE) smokeOk(); });
+const smokeReadyWindows = new Set();
+ipcMain.on('smoke:ready', (event) => {
+  if (!SMOKE) return;
+  const role = event.sender === mainWin?.webContents ? 'main' : event.sender === widgetWin?.webContents ? 'widget' : event.sender === ttWin?.webContents ? 'timetable' : null;
+  if (!role || smokeReadyWindows.has(role)) return;
+  smokeReadyWindows.add(role); console.log('SMOKE_READY ' + role);
+  if (smokeReadyWindows.size === 3) smokeOk();
+});
 ipcMain.on('smoke:error', (e, msg) => {
   console.error('SMOKE_ERROR: ' + msg);
   quitting = true; app.exit(1);
@@ -247,7 +284,8 @@ function createTray(iconBase64) {
 }
 
 // ---------- IPC ----------
-ipcMain.handle('store:load', () => loadStore());
+ipcMain.handle('store:load', () => rendererState());
+ipcMain.handle('credentials:set', (e, key) => { loadStore(); vault.set(key); saveStore(loadStore()); broadcast('state-changed', rendererState()); return rendererState(); });
 ipcMain.handle('store:save', (e, data) => { saveStore(data); return true; });
 ipcMain.handle('widget:toggle', (e, show) => toggleWidget(show));
 ipcMain.handle('widget:set-size', (e, w, h) => {
@@ -273,7 +311,7 @@ ipcMain.handle('export:data', async () => {
     filters: [{ name: 'JSON', extensions: ['json'] }]
   });
   if (canceled || !filePath) return { ok: false };
-  fs.writeFileSync(filePath, JSON.stringify(loadStore(), null, 2), 'utf8');
+  fs.writeFileSync(filePath, JSON.stringify(portableData(loadStore()), null, 2), 'utf8');
   return { ok: true, filePath };
 });
 ipcMain.handle('import:data', async () => {
@@ -281,10 +319,13 @@ ipcMain.handle('import:data', async () => {
     title: '导入数据', properties: ['openFile'], filters: [{ name: 'JSON', extensions: ['json'] }]
   });
   if (canceled || !filePaths || !filePaths.length) return { ok: false };
-  const raw = fs.readFileSync(filePaths[0], 'utf8');
-  const data = normalizeStore(JSON.parse(raw));
-  saveStore(data);
-  return { ok: true, data };
+  try {
+    if (fs.statSync(filePaths[0]).size > 10 * 1024 * 1024) throw new Error('文件超过 10 MB');
+    const raw = fs.readFileSync(filePaths[0], 'utf8');
+    const data = normalizeStore(importedData(JSON.parse(raw), loadStore()));
+    saveStore(data);
+    return { ok: true, data: rendererState() };
+  } catch (err) { return { ok: false, error: err.message }; }
 });
 ipcMain.handle('backup:list', () => {
   try {
@@ -299,7 +340,7 @@ ipcMain.handle('backup:list', () => {
 ipcMain.handle('backup:restore', (e, name) => {
   try {
     const file = path.join(backupDir(), path.basename(String(name || '')));
-    const data = normalizeStore(JSON.parse(fs.readFileSync(file, 'utf8')));
+    const data = normalizeStore(importedData(JSON.parse(fs.readFileSync(file, 'utf8')), loadStore()));
     saveStore(data);
     return { ok: true };
   } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
@@ -325,7 +366,7 @@ async function callDeepSeek({ apiKey, messages }) {
   return data.choices && data.choices[0] && data.choices[0].message.content;
 }
 ipcMain.handle('ai:generate', async (e, payload) => {
-  try { return { ok: true, text: await callDeepSeek(payload) }; }
+  try { return { ok: true, text: await callDeepSeek({ messages: payload.messages, apiKey: (loadStore(), vault.key) }) }; }
   catch (err) { return { ok: false, error: String(err && err.message || err) }; }
 });
 
@@ -342,7 +383,7 @@ if (!gotLock) {
     createWidget();
     createTimetable();
     setInterval(checkRemind, 30000);
-    if (SMOKE) setTimeout(() => { console.error('SMOKE_TIMEOUT'); quitting = true; app.quit(); }, 20000);
+    if (SMOKE) setTimeout(() => { console.error('SMOKE_TIMEOUT'); quitting = true; app.exit(1); }, 20000);
   });
   app.on('before-quit', () => { quitting = true; });
   app.on('window-all-closed', () => { if (quitting) app.quit(); });
