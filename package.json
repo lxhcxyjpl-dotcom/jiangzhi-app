@@ -6,7 +6,8 @@
   "private": true,
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "test": "node --test data-policy.test.js credential-vault.test.js main.integration.test.js timetable.test.js"
   },
   "devDependencies": {
     "electron": "^33.2.0"

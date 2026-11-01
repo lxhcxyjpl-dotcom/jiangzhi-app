@@ -3,6 +3,7 @@ contextBridge.exposeInMainWorld('desktopAPI', {
   isDesktop: true,
   loadStore: () => ipcRenderer.invoke('store:load'),
   saveStore: (data) => ipcRenderer.invoke('store:save', data),
+  setApiKey: (key) => ipcRenderer.invoke('credentials:set', key),
   aiGenerate: (payload) => ipcRenderer.invoke('ai:generate', payload),
   toggleWidget: (show) => ipcRenderer.invoke('widget:toggle', show),
   widgetSetSize: (w, h) => ipcRenderer.invoke('widget:set-size', w, h),

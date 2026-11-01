@@ -561,7 +561,7 @@ function normalize(s){
 }
 function persist(){
   S.schema_version=1;
-  if(IS_DESKTOP){ window.desktopAPI.saveStore(S).catch(function(){}); }
+  if(IS_DESKTOP){ window.desktopAPI.saveStore(S).catch(function(){ toast("保存失败，请检查磁盘空间与目录权限；当前修改尚未持久化"); }); }
   else { try{
     var prev=localStorage.getItem("jiangzhi");
     var nxt=JSON.stringify(S);
@@ -1345,7 +1345,7 @@ function aiWeeklyBuild(){
   return "这是我这一周的真实记录：\n"+lines.join("\n");
 }
 async function aiWeekly(){
-  if(!S.settings.apiKey){ toast("先在设置页填 DeepSeek API Key"); return; }
+  if(!(IS_DESKTOP ? S.settings.apiKeyConfigured : S.settings.apiKey)){ toast("先在设置页填 DeepSeek API Key"); return; }
   var u=aiWeeklyBuild();
   if(!u){ toast("这一周还没有记录——先去做一段真实的专注，再回来生成回顾"); return; }
   var box=$("#aiWeeklyBox");
@@ -1364,7 +1364,8 @@ async function aiWeekly(){
 function renderSettings(){
   var st=S.settings, html="", i;
   html+='<div class="set-group card"><div class="h-label">DeepSeek 模型 · 只做「想法→执行清单」</div>';
-  html+='<div class="row"><input id="setApiKey" type="password" class="inp grow" placeholder="sk-…（只存本机，不上传第三方）" value="'+esc(st.apiKey)+'">';
+  if(IS_DESKTOP && st.credentialStatus) html+='<div class="muted">'+esc(st.credentialStatus)+'</div>';
+  html+='<div class="row"><input id="setApiKey" type="password" class="inp grow" placeholder="'+esc(IS_DESKTOP && st.apiKeyConfigured ? '已配置；输入新 Key 可替换' : '输入 API Key')+'" value="'+esc(IS_DESKTOP ? '' : st.apiKey)+'">';
   html+='<button class="btn btn-soft" data-act="saveApiKey">保存</button></div>';
   html+='<div class="tiny" style="margin-top:8px">模型 deepseek-chat · 它只起草执行清单；提示语、鼓励语一律不生成，确认权在你。</div></div>';
   html+='<div class="set-group card"><div class="h-label">专注参数</div>';
@@ -1395,7 +1396,7 @@ function renderSettings(){
     html+='<div class="set-group card"><div class="h-label">桌面组件</div>';
     html+='<div class="set-row"><div><div class="sl">显示 / 隐藏组件</div><div class="sh">贴在桌面的电子小纸片</div></div>';
     html+='<button class="btn btn-soft btn-sm" data-act="toggleWidget">切换</button></div>';
-    html+='<div class="set-row"><div><div class="sl">桌面课表</div><div class="sh">临床1班周课表 · 可折叠、可拖角缩放</div></div>';
+    html+='<div class="set-row"><div><div class="sl">桌面课表</div><div class="sh">示例学习周课表 · 可折叠、可拖角缩放</div></div>';
     html+='<button class="btn btn-soft btn-sm" data-act="toggleTimetable">切换</button></div>';
     html+='<div class="set-row"><div><div class="sl">不透明度</div><div class="sh">半透明更像纸片</div></div>';
     html+='<input type="range" min="0.35" max="1" step="0.01" value="'+st.widgetOpacity+'" style="width:160px" data-act="opacity"></div></div>';
@@ -1945,8 +1946,9 @@ function deletePoint(id){
 }
 
 /* ============ 设置操作 ============ */
-function saveApiKey(){
+async function saveApiKey(){
   var el=$("#setApiKey"); if(!el) return;
+  if(IS_DESKTOP){ try { S=normalize(await window.desktopAPI.setApiKey(el.value.trim())); renderAll(); toast(S.settings.credentialStatus); } catch(e){ toast("Key 保存失败："+e.message); } return; }
   S.settings.apiKey=el.value.trim();
   persist(); renderAll(); toast(S.settings.apiKey?"Key 已保存（只在本机）":"已清空 Key");
 }
@@ -2003,7 +2005,7 @@ async function exportData(){
     var r=await window.desktopAPI.exportData();
     if(r.ok) toast("已导出到："+r.filePath);
   } else {
-    var blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});
+    var blob=new Blob([JSON.stringify((function(){var copy=JSON.parse(JSON.stringify(S));delete copy.settings.apiKey;return copy;})(),null,2)],{type:"application/json"});
     var a=document.createElement("a");
     a.href=URL.createObjectURL(blob);
     a.download="jiangzhi-export-"+todayKey()+".json";
@@ -2014,7 +2016,7 @@ async function exportData(){
 async function importData(){
   if(IS_DESKTOP){
     var r=await window.desktopAPI.importData();
-    if(r.ok && r.data){ S=normalize(r.data); seedCues(); persist(); renderAll(); toast("导入完成"); }
+    if(r.ok && r.data){ S=normalize(r.data); seedCues(); persist(); renderAll(); toast("导入完成"); } else if(r.error){ toast("导入失败："+r.error); }
   } else {
     var fi=document.createElement("input");
     fi.type="file"; fi.accept=".json,application/json";
@@ -2022,7 +2024,7 @@ async function importData(){
       var f=fi.files[0]; if(!f) return;
       var rd=new FileReader();
       rd.onload=function(){
-        try{ S=normalize(JSON.parse(rd.result)); seedCues(); persist(); renderAll(); toast("导入完成"); }
+        try{ var incoming=JSON.parse(rd.result); if(!incoming || incoming.schema_version!==1 || !incoming.settings || Array.isArray(incoming.settings)) throw new Error("schema"); ["tasks","points","cues","sessions","evidence","journals","dailyReviews"].forEach(function(k){if(!Array.isArray(incoming[k]) || incoming[k].some(function(v){return !v || typeof v!=="object" || Array.isArray(v);})) throw new Error("collection");}); incoming.settings.apiKey=S.settings.apiKey||""; S=normalize(incoming); seedCues(); persist(); renderAll(); toast("导入完成"); }
         catch(e){ toast("导入失败：不是有效的数据文件"); }
       };
       rd.readAsText(f);
@@ -2205,7 +2207,7 @@ function aiBuildUserContent(extra){
   return out;
 }
 async function aiGenerate(){
-  if(!S.settings.apiKey){
+  if(!(IS_DESKTOP ? S.settings.apiKeyConfigured : S.settings.apiKey)){
     var nk=$("#aiOutput");
     if(nk) nk.innerHTML='<div class="qline" style="border-color:#A8482B;background:#F6E4DC;color:#8A3B20">还没有配置 DeepSeek API Key。每人用自己的 Key，只存本机。</div><div style="text-align:right"><button class="btn btn-soft btn-sm" data-act="aiToSettings">去设置页粘贴 Key</button></div>';
     return;
@@ -2228,7 +2230,7 @@ async function aiGenerate(){
   aiRenderDraft();
 }
 async function callAI(messages){
-  if(IS_DESKTOP){ return await window.desktopAPI.aiGenerate({ apiKey:S.settings.apiKey, messages:messages }); }
+  if(IS_DESKTOP){ return await window.desktopAPI.aiGenerate({ messages:messages }); }
   try{
     var res=await fetch("https://api.deepseek.com/chat/completions",{
       method:"POST",
