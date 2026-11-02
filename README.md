@@ -1,58 +1,50 @@
-# 主动降智 · 专注 WebApp
+# 主动降智｜专注与执行清单
 
-> 「在执行前完成决策交接、执行中限制元审议、执行后收集真实证据」的轻量专注工具。
-> 方法论来源：《主动降智：从"骗自己"到行为自动化》（配套文档见项目外的 outputs/ 目录）。
+把开始前的选择写成下一步动作，减少执行时反复权衡；每段结束后用记录回看真实进展。
 
-## 快速开始（桌面版）
-
-```powershell
-cd jiangzhi-app
-npm ci           # 依赖缓存可通过 npm --cache D:\Programs\npm-cache ci 指定到 D 盘
-npm start        # 启动：主窗口 + 桌面组件 + 托盘
+```mermaid
+flowchart LR
+  A[规划] --> B[环境] --> C[预制叙事] --> D[第一步] --> E[专注] --> F[检查点三问] --> G[复盘]
 ```
 
-首次启动：主窗口是完整 App；桌面组件（无边框置顶小窗）默认显示，可在主窗右上角或托盘切换显隐。
+**入口：** 桌面 Electron（`npm start`）｜单 HTML 浏览器（打开 `app/index.html`）。
 
-## 单 HTML 版（浏览器 / 手机）
+**不配 Key 也能用：** 手动创建任务和执行点、专注计时、预置或自写提示语、结束三问、记录与证据回顾。AI 功能需要自行配置 DeepSeek Key。
 
-`app/index.html` 是一个完全自包含的单文件，双击即可在浏览器中运行（数据存 localStorage）。
-注意：浏览器版调 DeepSeek 接口受跨域限制，若失败请改用桌面版；桌面版由应用本体直连 API，无此问题。
+<!-- TODO: screenshot docs/media/focus.png -->
 
-## DeepSeek 接入
+## 功能
 
-「设置」页粘贴你的 DeepSeek API Key（桌面版通过 Electron safeStorage 加密存于用户数据目录 credentials.bin；浏览器版为 localStorage 明文）。
-模型：deepseek-chat，JSON 输出模式。功能边界：只做「想法 → 执行清单」，提示语与鼓励语一律不生成。
+- **规划与环境：** 手写阶段任务、执行动作、完成标准和检查分钟数；可选让 AI 起草清单及环境建议，检查后再保存。环境建议目前没有独立的后续展示入口。
+- **预制叙事与第一步：** 内置提示语可切换或隐藏，也可自写；执行点可写成能直接动手的动作。启动未成功时，可记录尝试或放弃。
+- **专注：** 当前执行点、提示语和计时集中在专注界面；到点会提示，仍可继续，结束时再回答问题。
+- **检查点三问：** 结束时记录计划是否遇到新信息、实际进展或卡点、下一步；提前结束时还会询问原因。专注记录可由用户标记为进步证据。
+- **复盘：** 记录页支持每日反思、随手记和专注记录；回顾页展示证据、统计和时间图表。AI 可选生成周回顾，只依据用户记录起草。
+- **AI 边界：** AI 可起草执行清单、可选生成周回顾（只依据用户记录）；两项都需自配 DeepSeek Key。生成结果由用户查看和确认。
 
-## 图标
+## 方法来源
 
-- 源设计：`assets/icon.svg`（降智拨盘·满弧表盘），备选方案 `assets/icon-v3.svg`（半亮+虚环）/ `assets/icon-steps.svg` / `assets/icon-wave.svg`；
-- 重画后重新渲染：`electron tools/render-icon.cjs assets/icon.svg assets/icon-512.png 512`；
-- 重新打包 ICO：`powershell -ExecutionPolicy Bypass -File tools/build-ico.ps1`。
+方法来自作者本人知乎长文《一个奇怪的自律方法：主动降智》。本文不复录原文。
 
-## 桌面课表
+<!-- TODO: 知乎链接 -->
 
-- 虚构示例周课表组件：`app/timetable.html`（单文件自包含，双击可在浏览器直接运行）；
-- 数据源：`assets/timetable-data.json`（虚构示例，不对应真实班级）；
-- 重新生成数据：`python tools/parse-timetable.py <xlsx路径>`；重新打包单文件：`python tools/build-timetable.py`；
-- 桌面版随应用启动自动钉在左上角，可折叠、可拖角缩放；托盘菜单 / 主窗顶栏「▦ 课表」/ 设置页可显隐。
+## 5 分钟无 Key 体验
 
-## 数据
+使用浏览器打开 `app/index.html`，按 [无 Key 演示路径](docs/demo-walkthrough.md) 操作。建议在隐私窗口中体验，避免覆盖个人浏览器数据；流程不依赖 `loadDemo`。
 
-- 桌面版：`%APPDATA%/主动降智/jiangzhi-data.json`（设置页可一键导出/导入）
-- 浏览器版：localStorage
-- `schema_version` 字段预留升级。
+## 运行与验证
 
-## 开发说明
+```sh
+npm ci
+npm start
+```
 
-- 前端零框架，纯 HTML/CSS/JS，单文件 `app/index.html`；
-- `main.js` 负责三窗口（主窗 + 组件窗 + 课表窗）、托盘、IPC、JSON 文件存储、DeepSeek 代理；
-- 组件窗与主窗共享同一份数据与专注会话状态，通过 IPC 广播同步；
-- `$env:SMOKE='1'; npx electron .` 可启动窗口进行冒烟测试（启动成功后自动退出并打印 SMOKE_OK）。
+- `npm test`：运行 Node 内置测试，不启动 Electron 窗口；GitHub Actions 还会检查 `main.js` 和 `preload.js` 语法。
+- Electron 冒烟检查：PowerShell 中运行 `$env:SMOKE='1'; npx electron .`。它会创建应用窗口，启动成功后自动退出并打印 `SMOKE_OK`。
+- 人工界面验收尚未完成；Windows 安装包也尚未验收。
+- 浏览器版数据保存在当前浏览器的 `localStorage`；桌面版数据保存在 `%APPDATA%/主动降智/jiangzhi-data.json`，设置页可导入/导出。浏览器直接打开文件时，DeepSeek 请求可能受跨域限制；通知也受浏览器权限和页面运行状态影响。
+- Key 需用户自行配置。桌面版使用 Electron `safeStorage` 加密保存在用户数据目录；浏览器版在 `localStorage` 明文保存。新导出不包含 Key，历史导出或旧备份可能包含明文 Key；导入时保留当前设备 Key。
 
-## 展示版与数据边界（2026-11-01）
+## 技术说明 / 我怎么做的
 
-这是个人专注与执行清单原型，方法有效性未经临床或行为实验验证。AI 功能可选，需要自行配置 DeepSeek Key；未配置时仍可使用清单、计时和复盘。
-
-展示课表全部为虚构示例。桌面与浏览器导出不包含 API Key，新生成的桌面备份也不包含 Key；导入及恢复保留当前本机 Key。历史导出和旧备份可能包含明文 Key，请自行妥善处理。桌面凭据使用系统加密，renderer 仅获得配置状态；加密不可用时拒绝保存新 Key，保留原配置并提示重试。旧 Key 迁移写入失败时保留旧本机配置并提示重试，不影响任务。浏览器版仍为 localStorage 明文。
-
-开发验证：`npm test` 运行无 Electron 依赖的导入/导出策略回归；CI 执行相同检查。SMOKE 是实际启动 Electron 后自动退出的检查，会创建窗口，不是无界面测试。界面体验和 Windows 安装包尚未验收。
+前端是零框架的单文件 HTML/CSS/JS；Electron 管理主窗口、桌面组件和课表窗口，通过 IPC 同步状态，并以 `safeStorage` 保护桌面凭据。自动化检查使用 `node --test`，由 GitHub Actions 执行。我用 AI 编程工具（vibecoding）协助开发。
