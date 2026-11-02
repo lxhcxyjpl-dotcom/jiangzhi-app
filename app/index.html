@@ -928,7 +928,7 @@ function renderRecords(){
     for(var e2=0;e2<S.evidence.length;e2++){ if(S.evidence[e2].sessionId===s.id) ev=S.evidence[e2]; }
     if(REC_FILTER==="evidence" && !ev) continue;
     if(REC_FILTER==="journal") continue;
-    push(dayKey(s.endAt), {t:s.endAt, html:sessionEntryHtml(s, ev)});
+    push(dayKey(sessionEnd(s)), {t:sessionEnd(s), html:sessionEntryHtml(s, ev)});
   }
   if(REC_FILTER!=="focus" && REC_FILTER!=="evidence"){
     for(i=0;i<S.journals.length;i++){
@@ -951,12 +951,12 @@ function renderRecords(){
   $("#view").innerHTML=html;
 }
 function sessionEntryHtml(s, ev){
-  var mins=Math.max(1, Math.round((s.endAt-s.startAt)/60000));
+  var mins=Math.max(1, Math.round(sessionMinutes(s)));
   var h='<div class="rec">';
   h+='<div class="rhead">';
   if(s.status==="done") h+='<span class="rdot done"></span>';
   else h+='<span class="rdot failed"></span>';
-  h+='<span class="rrange">'+fmtTime(s.startAt)+' – '+fmtTime(s.endAt)+'</span>';
+  h+='<span class="rrange">'+fmtTime(s.startAt)+' – '+fmtTime(sessionEnd(s))+'</span>';
   h+='<span class="tiny">'+mins+' 分钟</span>';
   if(ev) h+='<span class="badge ev">✦ 证据</span>';
   h+='<span class="grow"></span>';
@@ -1170,7 +1170,7 @@ function heatmapHtml(){
   var now=new Date(); var dow=(now.getDay()+6)%7;
   var start=new Date(now.getFullYear(),now.getMonth(),now.getDate()-dow-77);
   var counts={};
-  S.sessions.forEach(function(s){ if(s.status==="done"){ var k=dayKey(s.endAt); counts[k]=(counts[k]||0)+1; } });
+  S.sessions.forEach(function(s){ if(s.status==="done"){ var k=dayKey(sessionEnd(s)); counts[k]=(counts[k]||0)+1; } });
   var html='<div class="hm-wrap">';
   for(var w=0;w<12;w++){
     html+='<div class="hm-col">';
@@ -1193,8 +1193,8 @@ function taskPieItems(){
   var spanStart=retroSpanStart();
   var agg={}, order=[];
   S.sessions.forEach(function(s){
-    if(s.status!=="done" || s.endAt<spanStart) return;
-    var m=(s.endAt-s.startAt)/60000; if(m<=0) return;
+    if(s.status!=="done" || sessionEnd(s)<spanStart) return;
+    var m=sessionMinutes(s); if(m<=0) return;
     var key=s.taskId||"其他";
     if(!agg[key]){ agg[key]={title:s.taskTitle||"（已删除任务）", mins:0}; order.push(key); }
     agg[key].mins+=m;
@@ -1237,8 +1237,8 @@ function pointBarsHtml(){
   var spanStart=retroSpanStart();
   var agg={}, order=[];
   S.sessions.forEach(function(s){
-    if(s.status!=="done" || s.endAt<spanStart) return;
-    var m=(s.endAt-s.startAt)/60000; if(m<=0) return;
+    if(s.status!=="done" || sessionEnd(s)<spanStart) return;
+    var m=sessionMinutes(s); if(m<=0) return;
     var key=s.pointId||("?"+s.pointTitle);
     if(!agg[key]){ agg[key]={title:s.pointTitle, task:s.taskTitle, mins:0}; order.push(key); }
     agg[key].mins+=m;
@@ -1264,7 +1264,7 @@ function dayChainHtml(){
   for(i=13;i>=0;i--){
     var d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-i);
     var k=dayKey(d.getTime()), m2=0;
-    for(s=0;s<S.sessions.length;s++){ if(S.sessions[s].status==="done" && dayKey(S.sessions[s].endAt)===k) m2+=(S.sessions[s].endAt-S.sessions[s].startAt)/60000; }
+    for(s=0;s<S.sessions.length;s++){ if(S.sessions[s].status==="done" && dayKey(sessionEnd(S.sessions[s]))===k) m2+=(sessionEnd(S.sessions[s])-S.sessions[s].startAt)/60000; }
     days.push({k:k, label:(d.getMonth()+1)+"/"+d.getDate(), mins:m2});
     if(m2>max) max=m2;
   }
@@ -1294,8 +1294,8 @@ function renderRetro(){
   if(!pols.length){ html+='<div class="empty"><div class="eh">还没有拍立得</div><div class="em">随手记和每日反思，会变成这里的照片。</div></div>'; }
   else { html+='<div class="polwall">'+pols.join("")+'</div>'; }
   var spanStart=retroSpanStart();
-  var sessW=S.sessions.filter(function(s){ return s.status==="done" && s.endAt>=spanStart; });
-  var mins=0; sessW.forEach(function(s){ mins+=(s.endAt-s.startAt)/60000; });
+  var sessW=S.sessions.filter(function(s){ return s.status==="done" && sessionEnd(s)>=spanStart; });
+  var mins=0; sessW.forEach(function(s){ mins+=sessionMinutes(s); });
   var evW=S.evidence.filter(function(e){ return e.createdAt>=spanStart; });
   var chars=0; notes.forEach(function(j){ chars+=j.text.length; });
   html+='<div class="card" style="margin-top:20px"><div class="h-label">这段时间 · 真实发生的（含超时正计时）</div><div class="stats-row">';
@@ -1329,8 +1329,8 @@ var AI_REVIEW_SYSTEM='你是一位温和的复盘伙伴。用户会给你他一�
 function aiWeeklyBuild(){
   var now=Date.now(), weekStart=now-7*86400000, lines=[];
   S.sessions.forEach(function(s){
-    if(s.status!=="done" || s.endAt<weekStart) return;
-    var l="专注 "+fmtTime(s.startAt)+"–"+fmtTime(s.endAt)+" 「"+s.taskTitle+" · "+s.pointTitle+"」";
+    if(s.status!=="done" || sessionEnd(s)<weekStart) return;
+    var l="专注 "+fmtTime(s.startAt)+"–"+fmtTime(sessionEnd(s))+" 「"+s.taskTitle+" · "+s.pointTitle+"」";
     if(s.review){
       if(s.review.progressNote) l+="；进展："+s.review.progressNote;
       if(s.review.planValid==="yes") l+="；出现新信息："+(s.review.planNote||"");
@@ -1509,11 +1509,11 @@ function renderFocus(){
   }
   var tLabel;
   if(cs.overtime){
-    var over=Date.now()-cs.endAt; if(over>3*3600000) over=3*3600000;
+    var over=Date.now()-cs.endAt;
     tLabel="+"+fmtClock(over);
   } else tLabel=fmtClock(remain);
   html+='<div class="f-timer'+(cs.overtime?" over":"")+'" id="focusTimer">'+tLabel+'</div>';
-  if(cs.overtime) html+='<div class="f-task" style="margin-top:-4px">已到点 · 继续也行，结束再回答三问（最多计到 3 小时）</div>';
+  if(cs.overtime) html+='<div class="f-task" style="margin-top:-4px">已到点 · 继续也行，结束再回答三问</div>';
   html+='<div class="f-actions">';
   html+='<button class="btn btn-soft" data-act="toggleCue">'+(cs.cueHidden?"显示提示语":"隐藏提示语")+'</button>';
   html+='<button class="btn btn-soft" data-act="cycleCue">换一句</button>';
@@ -1539,7 +1539,7 @@ function cycleCue(){
 }
 function endSession(which){
   var cs=S.currentSession; if(!cs) return;
-  cs.reviewing=true; cs.actualEnd=Math.min(cs.endAt, Date.now());
+  cs.reviewing=true; cs.actualEnd=Date.now();
   cs.endIn=which||cs.startedIn||"main";
   persist(); renderAll();
 }
@@ -1577,7 +1577,6 @@ function tick(){
     var label;
     if(cs.overtime){
       var over=Date.now()-cs.endAt;
-      if(over>3*3600000) over=3*3600000;
       label="+"+fmtClock(over);
     } else {
       label=fmtClock(remain);
@@ -1589,6 +1588,14 @@ function tick(){
 }
 setInterval(tick, 250);
 
+/* SESSION_LOGIC_START */
+function defaultPointDone(progress, earlyReason){
+  return progress === "advanced" && ["distracted", "tired", "interrupted"].indexOf(earlyReason) === -1;
+}
+function canSaveEvidence(progressNote){ return !!(progressNote || "").trim(); }
+function sessionEnd(s){ return s.actualEnd != null ? s.actualEnd : s.endAt; }
+function sessionMinutes(s){ return (sessionEnd(s) - s.startAt) / 60000; }
+/* SESSION_LOGIC_END */
 /* ============ 结束三问 ============ */
 function reviewFormHtml(compact){
   var cs=S.currentSession; if(!cs) return "";
@@ -1635,7 +1642,11 @@ function reviewFormHtml(compact){
   h+='</select>';
   h+='<input class="inp" name="nextStep" style="display:none;margin-top:8px" placeholder="下一个执行点做什么？">';
   h+='<div class="hint" style="font-size:11.5px;color:var(--ink-3);margin-top:4px">从现有执行点里挑，或先不安排。</div></div>';
+  h+='<div class="qblock"><div class="qn">这个执行点完成了吗？</div><div class="chiprow">';
+  h+='<label class="chip"><input type="radio" name="pointDone" value="yes" data-act="rwPointDone" checked><span>完成</span></label>';
+  h+='<label class="chip"><input type="radio" name="pointDone" value="no" data-act="rwPointDone"><span>还没完成</span></label></div></div>';
   h+='<label class="chip" style="margin-bottom:14px"><input type="checkbox" id="evCheck"><span>✦ 把这次存为进步证据</span></label>';
+  h+='<div class="tiny" style="margin-bottom:8px">填写具体进展后才能存为证据。</div>';
   h+='<div class="rw-nav"><button class="btn btn-ghost btn-sm" data-act="rwPrev">← 上一问</button><button class="btn btn-primary" data-act="submitReview" data-which="'+(compact?"widget":"main")+'">保存这次专注</button></div></div>';
   h+='</div>';
   return h;
@@ -1664,6 +1675,13 @@ function rwNext(){
     var r=root.querySelector("input[name=planValid]:checked");
     var note=root.querySelector("textarea[name=planNote]");
     if(r && r.value==="yes" && !(note&&note.value.trim())){ rwErr(root,"你选了「有新信息」——顺手记一句是什么信息，火警要直通负责人。"); return; }
+  }
+  var next=root.querySelector('.rw-step[data-step="'+(n+1)+'"]');
+  if(next && next.querySelector('input[name=pointDone]') && !root.getAttribute("data-point-done-chosen")){
+    var progress=root.querySelector('input[name=progress]:checked');
+    var reason=root.querySelector('input[name=earlyReason]:checked');
+    var done=defaultPointDone(progress?progress.value:"advanced", reason?reason.value:"");
+    root.querySelector('input[name=pointDone][value="'+(done?"yes":"no")+'"]').checked=true;
   }
   rwShow(root, n+1);
 }
@@ -1731,24 +1749,25 @@ function submitReviewFrom(which){
   var earlyReason=erEl?erEl.value:"";
   var earlyNote=val("textarea[name=earlyNote]").trim();
   if(planValid==="yes" && !planNote){ toast("有新信息就顺手记一句——火警要直通负责人"); return; }
-  if(!progressNote){ progressNote={advanced:"有推进",stuck:"卡住了",both:"有推进，也有卡住"}[progress]||"有推进"; }
+  var evidenceSkipped=wantEv && !canSaveEvidence(progressNote);
+  wantEv=wantEv && canSaveEvidence(progressNote);
   cs.review={ planValid:planValid, planNote:planNote, progress:progress, progressNote:progressNote, nextStep:nextStep,
     earlyReason:earlyReason, earlyNote:earlyNote };
   cs.status="done";
   cs.endAt=cs.actualEnd||cs.endAt;
   S.sessions.push(cs);
-  var p=pointById(cs.pointId); if(p) p.done=true;
+  var p=pointById(cs.pointId); if(p) p.done=rad("pointDone")==="yes";
   if(createNext && nextStep){ S.points.push({ id:uid(), taskId:cs.taskId, title:nextStep, doneCriteria:"", done:false, checkMinutes:null, createdAt:Date.now(), fromSession:cs.id }); }
   if(cs.cueId){ var c=cueById(cs.cueId); if(c) c.lastUsedAt=Date.now(); var t=taskById(cs.taskId); if(t) t.cueId=cs.cueId; }
   if(wantEv){
-    var note=progressNote || "这一次有点进展。";
+    var note=progressNote;
     S.evidence.push({ id:uid(), sessionId:cs.id, taskId:cs.taskId, createdAt:Date.now(), note:note });
   }
   S.currentSession=null;
   persist(); renderAll();
   if(which==="main") closeModal();
   tourResume();
-  toast(wantEv ? "已保存，并存为进步证据 ✦" : "已保存。记录会自动留下，不用再写一遍。");
+  toast(evidenceSkipped ? "已保存；未填写具体进展，未存为证据。" : (wantEv ? "已保存，并存为进步证据 ✦" : "已保存。记录会自动留下，不用再写一遍。"));
 }
 
 /* ============ 记录操作 ============ */
@@ -1773,7 +1792,8 @@ function toggleEvidence(sessionId){
     '<button class="btn btn-primary" data-act="saveEvidence" data-id="'+sessionId+'">存下 ✦</button>', {loose:true});
 }
 function saveEvidence(sessionId){
-  var el=$("#evNote"); var note=(el?el.value:"").trim()||"这一次有点进展。";
+  var el=$("#evNote"); var note=(el?el.value:"").trim();
+  if(!canSaveEvidence(note)){ toast("请先填写具体的证据。"); return; }
   var sess=sessionById(sessionId);
   S.evidence.push({ id:uid(), sessionId:sessionId, taskId:sess?sess.taskId:null, createdAt:Date.now(), note:note });
   closeModal(); persist(); renderAll(); toast("已存为进步证据 ✦ 未来的你会看到。");
@@ -2520,10 +2540,10 @@ function widgetFocus(el, cs){
   h+='<div class="wm" style="margin:6px 0 0;text-align:center">'+esc(cs.pointTitle)+'</div>';
   if(S.settings.cueVisible && !cs.cueHidden && cs.cueText) h+='<div class="wcue">「'+esc(cs.cueText)+'」</div>';
   var wLabel;
-  if(cs.overtime){ var over2=Date.now()-cs.endAt; if(over2>3*3600000) over2=3*3600000; wLabel="+"+fmtClock(over2); }
+  if(cs.overtime){ var over2=Date.now()-cs.endAt; wLabel="+"+fmtClock(over2); }
   else wLabel=fmtClock(remain);
   h+='<div class="wTimer'+(cs.overtime?" over":"")+'" id="wTimer">'+wLabel+'</div>';
-  if(cs.overtime) h+='<div class="wm" style="margin-bottom:2px;text-align:center">已到点，继续也行（最多计 3 小时）</div>';
+  if(cs.overtime) h+='<div class="wm" style="margin-bottom:2px;text-align:center">已到点，继续也行</div>';
   h+='<div class="wactions">';
   h+='<button class="btn btn-soft btn-sm" data-act="toggleCue">'+(cs.cueHidden?"显示":"隐藏")+'提示语</button>';
   h+='<button class="btn btn-soft btn-sm" data-act="cycleCue">换一句</button>';
@@ -2697,6 +2717,10 @@ function onAction(e){
       case "remindToggle": S.settings.dailyRemind.enabled=el.checked; persist(); break;
       case "remindTime": S.settings.dailyRemind.time=el.value; persist(); break;
       case "pmTask": pmTaskChange(); break;
+      case "rwPointDone":
+        var doneRoot=IS_WIDGET ? $("#widgetBody") : $("#reviewRoot");
+        if(doneRoot) doneRoot.setAttribute("data-point-done-chosen", "1");
+        break;
       case "rwNextChoice":
         var rcRoot = IS_WIDGET ? $("#widgetBody") : $("#reviewRoot");
         var rcSel = rcRoot ? rcRoot.querySelector("select[name=nextChoice]") : null;

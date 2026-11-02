@@ -7,7 +7,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node --test data-policy.test.js credential-vault.test.js main.integration.test.js timetable.test.js"
+    "test": "node --test data-policy.test.js credential-vault.test.js main.integration.test.js timetable.test.js session-logic.test.js"
   },
   "devDependencies": {
     "electron": "^33.2.0"
